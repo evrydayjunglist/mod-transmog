@@ -45,8 +45,8 @@ public:
             { "",         HandleDisableTransMogVisual,   SEC_PLAYER,    Console::No },
             { "sync",     HandleSyncTransMogCommand,     SEC_PLAYER,    Console::No },
             { "portable", HandleTransmogPortableCommand, SEC_MODERATOR, Console::No },
-	    { "interface",HandleInterfaceOption,         SEC_PLAYER,    Console::No }
-            { "reload",   HandleTransmogReloadCommand,    SEC_MODERATOR, Console::Yes },
+	        { "interface",HandleInterfaceOption,         SEC_PLAYER,    Console::No },
+            { "reload",   HandleTransmogReloadCommand,    SEC_MODERATOR, Console::Yes }
         };
 
         static ChatCommandTable commandTable =
