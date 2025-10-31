@@ -24,6 +24,7 @@
 #include "DatabaseEnv.h"
 #include "SpellMgr.h"
 
+#define sT  sTransmogrification
 using namespace Acore::ChatCommands;
 
 class transmog_commandscript : public CommandScript
@@ -46,7 +47,8 @@ public:
             { "sync",      HandleSyncTransMogCommand,     SEC_PLAYER,    Console::No },
             { "portable",  HandleTransmogPortableCommand, SEC_PLAYER,    Console::No },
             { "interface", HandleInterfaceOption,         SEC_PLAYER,    Console::No },
-            { "has",       HandleQueryAppearance,         SEC_PLAYER,    Console::No }
+            { "has",       HandleQueryAppearance,         SEC_PLAYER,    Console::No },
+            { "reload",    HandleTransmogReloadCommand,   SEC_MODERATOR, Console::Yes }
         };
 
         static ChatCommandTable commandTable =
@@ -355,6 +357,60 @@ public:
             handler->PSendSysMessage("TRANSMOG_QUERY_RESULT:{}:0:{}", itemId, itemName);
         }
                 
+        return true;
+    }
+};
+
+    static bool HandleTransmogReloadCommand(ChatHandler* handler, std::string characterName)
+    {
+        if (characterName.empty())
+                return false;
+
+            Player* target = nullptr;
+
+            std::string playerName;
+
+            if (!handler->extractPlayerTarget(characterName.data(), &target, nullptr, &playerName))
+            {
+                return false;
+            }
+            target = ObjectAccessor::FindPlayerByName(characterName, true);
+            
+            if (!target)
+            {
+                return false;
+            }
+         
+        QueryResult result = CharacterDatabase.Query("SELECT GUID, FakeEntry FROM custom_transmogrification WHERE Owner = {}", target->GetGUID().GetCounter());
+        if (result)
+        {
+            do
+            {
+                ObjectGuid itemGUID = ObjectGuid::Create<HighGuid::Item>((*result)[0].Get<uint32>());
+                uint32 fakeEntry = (*result)[1].Get<uint32>();
+                if (fakeEntry == HIDDEN_ITEM_ID || sObjectMgr->GetItemTemplate(fakeEntry))
+                {
+
+                    sT->dataMap[itemGUID] = target->GetGUID();
+                    sT->entryMap[target->GetGUID()][itemGUID] = fakeEntry;
+                }
+                else
+                {
+                    //sLog->outError(LOG_FILTER_SQL, "Item entry (Entry: {}, itemGUID: {}, playerGUID: {}) does not exist, ignoring.", fakeEntry, GUID_LOPART(itemGUID), player->GetGUIDLow());
+                    // CharacterDatabase.Execute("DELETE FROM custom_transmogrification WHERE FakeEntry = {}", fakeEntry);
+                }
+            } while (result->NextRow());
+
+            for (uint8 slot = EQUIPMENT_SLOT_START; slot < EQUIPMENT_SLOT_END; ++slot)
+            {
+                if (Item* item = target->GetItemByPos(INVENTORY_SLOT_BAG_0, slot))
+                {
+                    target->SetVisibleItemSlot(slot, item);
+                    if (target->IsInWorld())
+                        item->SendUpdateToPlayer(target);
+                }
+            }
+        }
         return true;
     }
 };
